@@ -29,6 +29,8 @@ import org.apache.flink.streaming.api.TimerService;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.co.CoProcessFunction;
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor;
+import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.util.Collector;
 
 import java.util.ArrayList;
@@ -64,14 +66,22 @@ import java.util.Map;
 
 public class EventTimeJoinExercise {
 	public static void main(String[] args) throws Exception {
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+		Configuration configuration = new Configuration();
+		configuration.setLong("heartbeat.interval", 1000000L);
+		configuration.setLong("heartbeat.timeout", 5000000L);
+		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(4, configuration);
+//		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
 		// Simulated trade stream
-		DataStream<Trade> tradeStream = FinSources.tradeSource(env);
+		DataStream<Trade> tradeStream = FinSources
+				.tradeSource(env)
+				.assignTimestampsAndWatermarks(new TradeTimeStampExtrator(Time.seconds(1)));
 
 		// Simulated customer stream
-		DataStream<Customer> customerStream = FinSources.customerSource(env);
+		DataStream<Customer> customerStream = FinSources
+				.customerSource(env)
+				.assignTimestampsAndWatermarks(new CustomerTimeStampExtrator(Time.seconds(1)));
 
 		// Stream of enriched trades
 		DataStream<EnrichedTrade> joinedStream = tradeStream
@@ -190,6 +200,30 @@ public class EventTimeJoinExercise {
 			}
 
 			return theOneWeAreLookingFor;
+		}
+	}
+
+	// add the customer timestampAssigner
+	static class TradeTimeStampExtrator extends BoundedOutOfOrdernessTimestampExtractor<Trade> {
+		public TradeTimeStampExtrator(Time maxOutOfOrderness) {
+			super(maxOutOfOrderness);
+		}
+
+		@Override
+		public long extractTimestamp(Trade element) {
+			return element.timestamp;
+		}
+	}
+
+	// add the customer timestampAssigner
+	static class CustomerTimeStampExtrator extends BoundedOutOfOrdernessTimestampExtractor<Customer> {
+		public CustomerTimeStampExtrator(Time maxOutOfOrderness) {
+			super(maxOutOfOrderness);
+		}
+
+		@Override
+		public long extractTimestamp(Customer element) {
+			return element.timestamp;
 		}
 	}
 }
