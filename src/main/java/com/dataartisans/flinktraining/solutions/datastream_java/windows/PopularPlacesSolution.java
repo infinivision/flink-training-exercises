@@ -36,6 +36,8 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
+import java.io.InputStream;
+
 /**
  * Java reference implementation for the "Popular Places" exercise of the Flink training
  * (http://training.data-artisans.com).
@@ -52,7 +54,14 @@ public class PopularPlacesSolution extends ExerciseBase {
 	public static void main(String[] args) throws Exception {
 
 		ParameterTool params = ParameterTool.fromArgs(args);
-		final String input = params.get("input", ExerciseBase.pathToRideData);
+		String path = PopularPlacesSolution.class.getClassLoader()
+				.getResource("nycTaxiRides.gz")
+				.getFile();
+
+		System.out.println(path);
+		System.exit(0);
+
+		final String input = params.get("input", path);
 		final int popThreshold = params.getInt("threshold", 20);
 
 		final int maxEventDelay = 60;       // events are out of order by max 60 seconds
@@ -73,7 +82,7 @@ public class PopularPlacesSolution extends ExerciseBase {
 				// match ride to grid cell and event type (start or end)
 				.map(new GridCellMatcher())
 				// partition by cell id and event type
-				.<KeyedStream<Tuple2<Integer, Boolean>, Tuple2<Integer, Boolean>>>keyBy(0, 1)
+				.keyBy(0, 1)
 				// build sliding window
 				.timeWindow(Time.minutes(15), Time.minutes(5))
 				// count ride events in window

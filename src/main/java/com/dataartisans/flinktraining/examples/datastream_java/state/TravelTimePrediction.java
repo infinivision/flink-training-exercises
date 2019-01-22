@@ -58,9 +58,14 @@ public class TravelTimePrediction {
 		final String input = params.getRequired("input");
 
 		final int servingSpeedFactor = 600; // events of 10 minutes are served in 1 second
+		Configuration configuration = new Configuration();
+		configuration.setLong("heartbeat.interval", 1000000L);
+		configuration.setLong("heartbeat.timeout", 5000000L);
+		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(1, configuration);
 
 		// set up streaming execution environment
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+//		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
 		// operate in Event-time
 		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 		// create a checkpoint every 5 seconds
